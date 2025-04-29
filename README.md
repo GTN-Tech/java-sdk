@@ -6,7 +6,7 @@ This is a lightweight SDK which wraps the REST APIs of the GTN Embed set as docu
 ### Installing packages
 The GTN Embed SDK is available on Maven. 
 ```bash
-    prnding. coming soon ...
+    pending. coming soon ...
 ```
 
 ### API Authentication
