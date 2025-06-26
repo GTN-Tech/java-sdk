@@ -1,11 +1,4 @@
-package com.gtn;
-
-/**
- * <p>
- * (C) Copyright 2010-2025 Global Trading Network. All Rights Reserved.
- * <p/>
- * Created by uditha on 2025-02-20.
- */
+package com.gtngroup;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -13,19 +6,24 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 
-import com.gtn.util.Params;
-import com.gtn.util.Utils;
+import com.gtngroup.util.Params;
+import com.gtngroup.util.Utils;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+/**
+ * (C) Copyright 2010-2025 Global Trading Network. All Rights Reserved.
+ * Created by Uditha Nagahawatta on 2025-02-20.
+ */
 public class Requests {
 
     /**
      * HTTP GET method
      * @param endpoint to call
      * @return JSON response
-     * @throws IOException
+     * @throws IOException on error
      */
     protected static JSONObject get(String endpoint) throws IOException {
         return get(endpoint, new Params());
@@ -36,7 +34,7 @@ public class Requests {
      * @param endpoint to call
      * @param payload to send to the endpoint
      * @return JSON response
-     * @throws IOException
+     * @throws IOException on error
      */
     protected static JSONObject get(String endpoint, Params payload) throws IOException {
 
@@ -53,7 +51,7 @@ public class Requests {
             paramString.append(payload.get(key));
             count++;
         }
-        return sendRequest(endpoint + paramString.toString(), "GET", null);
+        return sendRequest(endpoint + paramString, "GET", null);
     }
 
     /**
@@ -61,7 +59,7 @@ public class Requests {
      * @param endpoint to call
      * @param payload to send to the endpoint
      * @return JSON response
-     * @throws IOException
+     * @throws IOException on error
      */
     protected static JSONObject post(String endpoint, Params payload) throws IOException {
         return sendRequest(endpoint, "POST", payload.toString());
@@ -71,9 +69,9 @@ public class Requests {
      * HTTP POST method
      * @param endpoint to call
      * @param payload to send to the endpoint
-     * @param token
+     * @param token to send
      * @return JSON response
-     * @throws IOException
+     * @throws IOException on error
      */
     protected static JSONObject post(String endpoint, String payload, String token) throws IOException {
         return sendRequest(endpoint, "POST", payload, token);
@@ -83,8 +81,9 @@ public class Requests {
      * HTTP PATCH method
      * @param endpoint to call
      * @param payload to send to the endpoint
+     * @param token to send
      * @return JSON response
-     * @throws IOException
+     * @throws IOException on error
      */
     protected static JSONObject patch(String endpoint, String payload, String token) throws IOException {
         return sendRequest(endpoint, "PATCH", payload, token);
@@ -95,7 +94,7 @@ public class Requests {
      * @param endpoint to call
      * @param payload to send to the endpoint
      * @return JSON response
-     * @throws IOException
+     * @throws IOException on error
      */
     public static JSONObject delete(String endpoint, Params payload) throws IOException {
         int count = 0;
@@ -112,7 +111,7 @@ public class Requests {
             count++;
         }
 
-        return sendRequest(endpoint + paramString.toString(), "DELETE", null, null);
+        return sendRequest(endpoint + paramString, "DELETE", null, null);
     }
 
     /**
@@ -121,7 +120,7 @@ public class Requests {
      * @param method GET, POST, PATCH, DELETE
      * @param payload to send with the endpoint
      * @return endpoint response as per the API documentation
-     * @throws IOException
+     * @throws IOException on error
      */
     private static JSONObject sendRequest(String endpoint, String method, String payload) throws IOException {
         return sendRequest(endpoint, method,payload, null);
@@ -134,11 +133,11 @@ public class Requests {
      * @param payload to send with the endpoint
      * @param token authorisation token
      * @return endpoint response as per the API documentation
-     * @throws IOException
+     * @throws IOException on error
      */
     private static JSONObject sendRequest(String endpoint, String method, String payload, String token) throws IOException {
 
-        URL url = null;
+        URL url;
 
         if (endpoint.charAt(0) != '/'){
             url = new URL(Shared.getInstance().getAPIUrl() + "/" + endpoint);
@@ -149,7 +148,7 @@ public class Requests {
 
         HttpURLConnection conn = null;
         BufferedReader reader = null;
-        StringBuilder response = null;
+        StringBuilder response;
 
         try {
             conn = (HttpURLConnection) url.openConnection();
@@ -175,7 +174,7 @@ public class Requests {
             if (payload != null && !payload.isEmpty()) {
                 conn.setDoOutput(true);
                 try (OutputStream os = conn.getOutputStream()) {
-                    byte[] input = payload.getBytes("utf-8");
+                    byte[] input = payload.getBytes(StandardCharsets.UTF_8);
                     os.write(input, 0, input.length);
                 }
             }
@@ -186,9 +185,9 @@ public class Requests {
             responseObject.put("http_status", responseCode);
 
             if (responseCode >= 200 && responseCode < 300) {
-                reader = new BufferedReader(new InputStreamReader(conn.getInputStream(), "utf-8"));
+                reader = new BufferedReader(new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8));
             } else {
-                reader = new BufferedReader(new InputStreamReader(conn.getErrorStream(), "utf-8"));
+                reader = new BufferedReader(new InputStreamReader(conn.getErrorStream(), StandardCharsets.UTF_8));
             }
 
             response = new StringBuilder();
@@ -196,7 +195,7 @@ public class Requests {
             while ((line = reader.readLine()) != null) {
                 response.append(line);
             }
-            System.out.println(response.toString());
+            //System.out.println(response);
             try {
                 responseObject.put("response", new JSONObject(response.toString()));
             } catch (JSONException e) {

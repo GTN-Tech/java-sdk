@@ -1,12 +1,10 @@
-package com.gtn;
+package com.gtngroup;
 
 import org.json.JSONObject;
 
 /**
- * <p>
  * (C) Copyright 2010-2025 Global Trading Network. All Rights Reserved.
- * <p/>
- * Created by uditha on 2025-03-20.
+ * Created by Uditha Nagahawatta on 2025-03-20.
  */
 public interface MessageListener {
 

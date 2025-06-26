@@ -1,6 +1,6 @@
-package com.gtn;
+package com.gtngroup;
 
-import com.gtn.util.Params;
+import com.gtngroup.util.Params;
 import jakarta.websocket.ClientEndpoint;
 import jakarta.websocket.CloseReason;
 import jakarta.websocket.ContainerProvider;
@@ -16,12 +16,9 @@ import java.io.IOException;
 import java.net.URI;
 
 /**
- * <p>
  * (C) Copyright 2010-2021 Global Market Technologies. All Rights Reserved.
- * <p/>
- * Created by uditha on 2025-02-20.
+ * Created by Uditha Nagahawatta on 2025-02-20.
  */
-
 @ClientEndpoint
 public class MarketDataStreaming implements StreamingService {
 
@@ -135,7 +132,6 @@ public class MarketDataStreaming implements StreamingService {
     /**
      * Connect the websocket
      *
-     * @return true if the connection is successful
      */
     public void connect(String endpoint, String events) {
         if (self == null || self.webSocketListener == null) {
@@ -163,7 +159,7 @@ public class MarketDataStreaming implements StreamingService {
         } catch (Exception e) {
             e.printStackTrace();
             self.waiting = false;
-            self.webSocketListener.onClose("Error:" + e.toString());
+            self.webSocketListener.onClose("Error:" + e);
         }
     }
 

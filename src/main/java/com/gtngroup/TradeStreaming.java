@@ -1,6 +1,6 @@
-package com.gtn;
+package com.gtngroup;
 
-import com.gtn.util.Params;
+import com.gtngroup.util.Params;
 import org.json.JSONObject;
 
 import java.net.URI;
@@ -11,12 +11,9 @@ import java.time.Duration;
 import java.util.stream.Stream;
 
 /**
- * <p>
  * (C) Copyright 2010-2025 Global Trading Network. All Rights Reserved.
- * <p/>
- * Created by uditha on 2025-02-20.
+ * Created by Uditha Nagahawatta on 2025-02-20.
  */
-
 public class TradeStreaming implements StreamingService{
 
     private static TradeStreaming self;

@@ -1,12 +1,10 @@
-package com.gtn;
+package com.gtngroup;
 
-import com.gtn.util.Params;
+import com.gtngroup.util.Params;
 
 /**
- * <p>
  * (C) Copyright 2010-2021 Global Market Technologies. All Rights Reserved.
- * <p/>
- * Created by uditha on 2025-04-07.
+ * Created by Uditha Nagahawatta on 2025-04-07.
  */
 public interface StreamingService {
 

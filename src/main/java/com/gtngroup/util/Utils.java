@@ -1,15 +1,14 @@
-package com.gtn.util;
+package com.gtngroup.util;
 
 import org.json.JSONArray;
+import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.Map;
 
 /**
- * <p>
  * (C) Copyright 2010-2025 Global Trading Network. All Rights Reserved.
- * <p/>
- * Created by uditha on 2025-03-12.
+ * Created by Uditha Nagahawatta on 2025-03-12.
  */
 public class Utils {
 
@@ -44,6 +43,32 @@ public class Utils {
         }
 
         return subMap;
+    }
+
+    public static boolean hasMapKey(String path, JSONObject map) {
+        String[] pathData = path.split("/");
+
+        Object subMap = map;
+        for (String item : pathData) {
+            String[] params = item.split(":");
+            if (params.length > 1) {
+                for (Object obj : ((JSONArray) subMap)) {
+                    JSONObject tmpMap = ((JSONObject) obj);
+                    if (tmpMap.get(params[0]).equals(params[1])) {
+                        subMap = tmpMap.get(params[2]);
+                    }
+
+                }
+            } else {
+                try {
+                    subMap = ((JSONObject) subMap).get(item);
+                } catch (JSONException e) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
     }
 
     public static JSONObject returnStatus(int status, String response){

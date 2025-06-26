@@ -1,10 +1,8 @@
-package com.gtn;
+package com.gtngroup;
 
 /**
- * <p>
  * (C) Copyright 2010-2025 Global Trading Network. All Rights Reserved.
- * <p/>
- * Created by uditha on 2025-03-06.
+ * Created by Uditha Nagahawatta on 2025-03-06.
  */
 public enum AuthStatus {
     AUTH_SUCCESS("AUTH_SUCCESS"),

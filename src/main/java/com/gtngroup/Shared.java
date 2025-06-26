@@ -1,12 +1,11 @@
-package com.gtn;
+package com.gtngroup;
 
+import com.gtngroup.util.Params;
 import org.json.JSONObject;
 
 /**
- * <p>
  * (C) Copyright 2010-2025 Global Trading Network. All Rights Reserved.
- * <p/>
- * Created by uditha on 2025-02-20.
+ * Created by Uditha Nagahawatta on 2025-02-20.
  */
 public class Shared {
     private static Shared instance;
@@ -15,6 +14,7 @@ public class Shared {
     private String appSecret;
     private String privateKey;
     private String institution;
+    private int institutionId;
     private String customerNumber;
     private String userId;
     private JSONObject customerToken;
@@ -22,9 +22,13 @@ public class Shared {
     private String assertion;
     private String user;
     private String pass;
+    private String channel;
     private boolean ready;
 
+    private static Params authMap;
+
     private Shared() {
+        initAuthMap();
         // Private constructor to prevent instantiation
     }
 
@@ -35,17 +39,38 @@ public class Shared {
         return instance;
     }
 
+    private static void initAuthMap(){
+        authMap = new Params()
+                .add("DWM_SERVER_TOKEN", "/microinvest/v1.0/auth/server/token")
+                .add("DWM_SERVER_TOKEN_REFRESH", "/microinvest/v1.0/auth/server/refresh-token")
+                .add("DWM_CUSTOMER_TOKEN", "/microinvest/v1.0/auth/client/token")
+                .add("DWM_CUSTOMER_TOKEN_REFRESH", "/microinvest/v1.0/auth/client/refresh-token")
+
+                .add("TRADE_SERVER_TOKEN", "/trade/auth/token")
+                .add("TRADE_SERVER_TOKEN_REFRESH", "/trade/auth/token/refresh")
+                .add("TRADE_CUSTOMER_TOKEN", "/trade/auth/customer/token")
+                .add("TRADE_CUSTOMER_TOKEN_REFRESH", "/trade/auth/customer/token/refresh");
+    }
+
+    protected static String getAuthURL(String code){
+        String urlID = Shared.getInstance().getChannel() + "_" + code;
+        return authMap.getString( urlID);
+    }
+
     protected void init(String apiUrl, String appKey, String appSecret, String privateKey,
-                     String institution, String customerNumber, String userId, String user, String pass) {
+                     String institution, String customerNumber, String userId, String user,
+                        String pass, String channel, String institutionId) {
         this.apiUrl = apiUrl;
         this.appKey = appKey;
         this.appSecret = appSecret;
         this.privateKey = privateKey;
         this.institution = institution;
+        this.institutionId = Integer.parseInt(institutionId);
         this.customerNumber = customerNumber;
         this.userId = userId;
         this.user = user;
         this.pass = pass;
+        this.channel = channel;
         this.ready = true;
     }
 
@@ -99,6 +124,13 @@ public class Shared {
      */
     protected String getInstitution() {
         return institution;
+    }
+
+    /**
+     * @return the institution id
+     */
+    public int getInstitutionId() {
+        return institutionId;
     }
 
     /**
@@ -215,6 +247,13 @@ public class Shared {
      */
     protected boolean isUserMode(){
         return user != null;
+    }
+
+    /**
+     * @return the channel code
+     */
+    public String getChannel() {
+        return channel;
     }
 }
 

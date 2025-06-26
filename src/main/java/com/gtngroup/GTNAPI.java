@@ -1,14 +1,12 @@
-package com.gtn;
+package com.gtngroup;
 
-import com.gtn.util.Params;
+import com.gtngroup.util.Params;
 import org.json.JSONObject;
 
 import java.io.IOException;
 
 /**
- * <p>
  * (C) Copyright 2025-2025 Global Market Technologies. All Rights Reserved.
- * <p/>
  * Created by Uditha Nagahawatta on 2025-02-20.
  */
 public class GTNAPI {
@@ -26,7 +24,10 @@ public class GTNAPI {
                     null,
                     null,
                     params.getString("user"),
-                    params.getString("password"));
+                    params.getString("password"),
+                    params.getString("channel", "TRADE"),
+                    params.getString("institution_id", "-1")
+            );
         } else if (params.containsKey("customer_number")) { // customer mode
             Shared.getInstance().init(
                     params.getString("api_url"),
@@ -37,7 +38,9 @@ public class GTNAPI {
                     params.getString("customer_number"),
                     "1111",
                     null,
-                    null);
+                    null,
+                    params.getString("channel", "TRADE"),
+                    params.getString("institution_id", "-1"));
         } else {
             Shared.getInstance().init( // institution mode
                     params.getString("api_url"),
@@ -48,7 +51,9 @@ public class GTNAPI {
                     null,
                     params.getString("user_id"),
                     null,
-                    null);
+                    null,
+                    params.getString("channel", "TRADE"),
+                    params.getString("institution_id", "-1"));
         }
     }
 
@@ -104,7 +109,7 @@ public class GTNAPI {
      *
      * @param endpoint to call
      * @return JSON response
-     * @throws IOException
+     * @throws IOException on error
      */
     public JSONObject get(String endpoint) throws IOException {
         return get(endpoint, new Params());
@@ -116,7 +121,7 @@ public class GTNAPI {
      * @param endpoint to call
      * @param payload  to send to the endpoint
      * @return JSON response
-     * @throws IOException
+     * @throws IOException on error
      */
     public JSONObject get(String endpoint, Params payload) throws IOException {
         return Requests.get(endpoint, payload);
@@ -128,7 +133,7 @@ public class GTNAPI {
      * @param endpoint to call
      * @param payload  to send to the endpoint
      * @return JSON response
-     * @throws IOException
+     * @throws IOException on error
      */
     public JSONObject post(String endpoint, Params payload) throws IOException {
         return Requests.post(endpoint, payload);
@@ -140,7 +145,7 @@ public class GTNAPI {
      * @param endpoint to call
      * @param payload  to send to the endpoint
      * @return JSON response
-     * @throws IOException
+     * @throws IOException on error
      */
     public JSONObject patch(String endpoint, String payload) throws IOException {
         return Requests.patch(endpoint, payload, null);
@@ -152,7 +157,7 @@ public class GTNAPI {
      * @param endpoint to call
      * @param payload  to send to the endpoint
      * @return JSON response
-     * @throws IOException
+     * @throws IOException on error
      */
     public JSONObject delete(String endpoint, Params payload) throws IOException {
         return Requests.delete(endpoint, payload);

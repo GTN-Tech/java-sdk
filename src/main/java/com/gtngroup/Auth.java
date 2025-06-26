@@ -1,16 +1,10 @@
-package com.gtn;
-
-/**
- * <p>
- * (C) Copyright 2010-2025 Global Trading Network. All Rights Reserved.
- * <p/>
- * Created by uditha on 2025-02-20.
- */
+package com.gtngroup;
 
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
-import com.gtn.util.Params;
-import com.gtn.util.Utils;
+import com.gtngroup.util.Params;
+import com.gtngroup.util.Utils;
+import org.json.JSONException;
 import org.json.JSONObject;
 
 import javax.crypto.SecretKeyFactory;
@@ -26,14 +20,18 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * (C) Copyright 2010-2025 Global Trading Network. All Rights Reserved.
+ * Created by Uditha Nagahawatta on 2025-02-20.
+ */
 public class Auth {
 
     private static boolean active;
     private static Thread thread;
 
-
     /**
      * Initialise the session
+     *
      * @return the authentication status
      */
     protected static JSONObject init() {
@@ -46,11 +44,11 @@ public class Auth {
 
     /**
      * Initialise in user/pass mode
+     *
      * @return the authentication status
      */
     private static JSONObject initUser() {
         AuthStatus authStatus = AuthStatus.AUTH_SUCCESS;
-
 
         JSONObject customerToken = getCustomerTokenForUser(
                 Shared.getInstance().getUser(),
@@ -89,6 +87,7 @@ public class Auth {
 
     /**
      * Initialise in institution  mode
+     *
      * @return the authentication status
      */
     private static JSONObject initInstitution() {
@@ -115,13 +114,17 @@ public class Auth {
         System.out.println("Assertion created successfully");
 
 
-        Params params = new Params("assertion", Shared.getInstance().getAssertion());
+        Params params = new Params("assertion", Shared.getInstance().getAssertion())
+                .add("authorization", basicAuth);
 
         JSONObject serverToken = getServerToken(params, basicAuth);
         int httpStatus = serverToken.getInt("http_status");
         if (httpStatus == 200 &&
-                !serverToken.getJSONObject("response").isEmpty() &&
-                Utils.getMapData("response/status", serverToken).equals("SUCCESS")) {
+                !serverToken.getJSONObject("response").isEmpty()
+                && (!Utils.hasMapKey("response/status", serverToken) ||
+                Utils.getMapData("response/status", serverToken).equals("SUCCESS"))
+
+        ) {
             System.out.println("Institution authentication success");
             Shared.getInstance().setServerToken(serverToken.getJSONObject("response"));
 
@@ -180,27 +183,37 @@ public class Auth {
 
     /**
      * Create the assertion
-     * @param privateKey string
-     * @param appKey string
+     *
+     * @param privateKey  string
+     * @param appKey      string
      * @param institution string
-     * @param userId string
+     * @param userId      string
      * @return the assertion
      */
     private static String createToken(String privateKey, String appKey,
-                                     String institution, String userId) {
+                                      String institution, String userId) {
         try {
 
-            Map<String, String> payload = new HashMap<>();
+            Map<String, Object> payload = new HashMap<>();
             payload.put("instCode", institution);
             payload.put("userId", userId);
+            payload.put("serverId", 1);
+            int instId = Shared.getInstance().getInstitutionId();
+            if (instId > 0) {
+                payload.put("instId", instId);
+            }
 
             Algorithm algorithm = getAlgorithm(privateKey);
             Date accessTokenExpiry = (new Date(System.currentTimeMillis() + 24 * 60 * 60 * 1000));
+
+            Date now = new Date();
 
             String assertion = JWT.create()
                     .withIssuer(appKey)
                     .withPayload(payload)
                     .withExpiresAt(accessTokenExpiry)
+                    .withIssuedAt(now)
+                    .withNotBefore(now)
                     .sign(algorithm);
             return assertion;
 
@@ -212,6 +225,7 @@ public class Auth {
 
     /**
      * Basic auth string creation
+     *
      * @param username string
      * @param password string
      * @return the basic auth string
@@ -236,7 +250,14 @@ public class Auth {
     private static RSAPrivateKey getPrivateKey(String privateKeyString) {
         try {
             KeyFactory kf = KeyFactory.getInstance("RSA");
-            byte[] pvtKeyBytes = base16Decoder(privateKeyString);
+            byte[] pvtKeyBytes;
+            if (isLikelyHex(privateKeyString)) {
+                // base 16 encoded?
+                pvtKeyBytes = base16Decoder(privateKeyString);
+            } else {
+                // maye be base 64
+                pvtKeyBytes = Base64.getDecoder().decode(privateKeyString);
+            }
             PKCS8EncodedKeySpec keySpec = new PKCS8EncodedKeySpec(pvtKeyBytes);
             return (RSAPrivateKey) kf.generatePrivate(keySpec);
         } catch (Exception e) {
@@ -247,6 +268,7 @@ public class Auth {
 
     /**
      * Base 16 encode the given string
+     *
      * @param hex string
      * @return the encoded string
      */
@@ -259,15 +281,26 @@ public class Auth {
     }
 
     /**
+     * Check for hexa decimal patten in s string
+     * @param str
+     * @return true if the sring is in HEX format
+     */
+    private static boolean isLikelyHex(String str) {
+        // Base16 is typically only hexadecimal characters and even length
+        return str.matches("(?i)^[0-9a-f]+$") && str.length() % 2 == 0;
+    }
+
+    /**
      * Get the server token from the server
+     *
      * @param params map
-     * @param token assertion
+     * @param token  assertion
      * @return
      */
     private static JSONObject getServerToken(Params params, String token) {
         try {
 
-            return Requests.post("/trade/auth/token", params.toString(), token);
+            return Requests.post(Shared.getInstance().getAuthURL("SERVER_TOKEN"), params.toString(), token);
         } catch (Exception e) {
             e.printStackTrace();
             return new JSONObject().put("http_status", -1).put("response", new JSONObject());
@@ -276,13 +309,14 @@ public class Auth {
 
     /**
      * Fetch the refreshed server token
+     *
      * @return new token
      */
     private static JSONObject getServerTokenRefresh() {
         try {
             String refreshToken = Shared.getInstance().getServerToken().getString("refreshToken");
             Params params = new Params("refreshToken", refreshToken);
-            return Requests.post("/trade/auth/token/refresh", params);
+            return Requests.post(Shared.getInstance().getAuthURL("SERVER_TOKEN_REFRESH"), params);
         } catch (Exception e) {
             e.printStackTrace();
             return new JSONObject().put("http_status", -1).put("response", new JSONObject());
@@ -291,14 +325,15 @@ public class Auth {
 
     /**
      * Get the customer token from the server
+     *
      * @param params map
-     * @param token assertion
+     * @param token  assertion
      * @return
      */
     private static JSONObject getCustomerToken(Params params, String token) {
         try {
 
-            return Requests.post("/trade/auth/customer/token", params.toString(), token);
+            return Requests.post(Shared.getInstance().getAuthURL("CUSTOMER_TOKEN"), params.toString(), token);
         } catch (Exception e) {
             e.printStackTrace();
             return new JSONObject().put("http_status", -1).put("response", new JSONObject());
@@ -307,13 +342,14 @@ public class Auth {
 
     /**
      * Fetch the refreshed server token
+     *
      * @return new token
      */
     private static JSONObject getCustomerTokenRefresh() {
         try {
             String refreshToken = Shared.getInstance().getCustomerToken().getString("refreshToken");
             Params params = new Params("refreshToken", refreshToken);
-            return Requests.post("/trade/auth/customer/token/refresh", params);
+            return Requests.post(Shared.getInstance().getAuthURL("CUSTOMER_TOKEN_REFRESH"), params);
         } catch (Exception e) {
             e.printStackTrace();
             return new JSONObject().put("http_status", -1).put("response", new JSONObject());
@@ -322,8 +358,9 @@ public class Auth {
 
     /**
      * Get the customer token for the user/pass login
-     * @param user string
-     * @param passw string
+     *
+     * @param user        string
+     * @param passw       string
      * @param institution string
      * @return the customer token
      */
@@ -357,6 +394,7 @@ public class Auth {
 
     /**
      * Base 64 encode username and password
+     *
      * @param username string
      * @param password string
      * @return encoded string
@@ -368,6 +406,7 @@ public class Auth {
 
     /**
      * Hash the password
+     *
      * @param password string
      * @return the hashed password
      */
@@ -419,14 +458,23 @@ public class Auth {
                 }
 
                 JSONObject token = Shared.getInstance().getToken();
-                long expMillis = token.getLong("refreshTokenExpiresAt");
+                long expMillis = 0;
+                try {
+                    expMillis = token.getLong("refreshTokenExpiresAt");
+                } catch (JSONException e) {
+                    expMillis = token.getLong("refreshTokenExpiry"); //DWM
+                }
                 long delta = expMillis - System.currentTimeMillis();
 
                 if (delta < 50_000) {
                     System.out.println("refresh token expired. logging out");
                     logout();
                 } else {
-                    expMillis = token.getLong("accessTokenExpiresAt");
+                    try {
+                        expMillis = token.getLong("accessTokenExpiresAt");
+                    } catch (JSONException e) {
+                        expMillis = token.getLong("tokenExpiry"); // DWM
+                    }
                     delta = expMillis - System.currentTimeMillis();
                     if (delta > 0 && delta < 100_000) {
                         System.out.printf("--> refreshing %s access token\n", mode);
