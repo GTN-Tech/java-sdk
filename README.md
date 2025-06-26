@@ -136,7 +136,7 @@ System.out.println(response.toString(4));
 
 Response is in the format
 
-```json
+```text
 {
     "http_status" : 200,  # http status of the api call as per the API documentation
     "response" : {data map}  # response data of the api as per the API documentation
