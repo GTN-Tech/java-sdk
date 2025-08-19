@@ -135,10 +135,10 @@ Call the `HTTP POST` method to the endpoint `customer/account` to create a custo
 
 ```java
 Params params = new Params()
-    .add("referenceNumber"n "546446546")
-    .add("firstName"n "Kevin")
-    .add("lastName"n "Smith")
-    .add("passportNumber"n "123456")
+    .add("referenceNumber", "546446546")
+    .add("firstName", "Kevin")
+    .add("lastName", "Smith")
+    .add("passportNumber", "123456")
     ...
     
 JSONObject response = api.post('/trade/bo/v1.2.1/customer/account', params)
