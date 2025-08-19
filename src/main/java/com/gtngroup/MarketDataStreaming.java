@@ -11,6 +11,8 @@ import jakarta.websocket.OnOpen;
 import jakarta.websocket.Session;
 import jakarta.websocket.WebSocketContainer;
 import org.json.JSONObject;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.net.URI;
@@ -27,6 +29,8 @@ public class MarketDataStreaming implements StreamingService {
     private static MarketDataStreaming self;
     private MessageListener webSocketListener;
     private boolean waiting;
+
+    private static final Logger LOGGER = LogManager.getLogger(Auth.class);
 
     public MarketDataStreaming() {
 
@@ -49,9 +53,9 @@ public class MarketDataStreaming implements StreamingService {
     public void onOpen(Session session) {
         self.session = session;
         try {
-            session.getBasicRemote().sendText(String.format("{\"token\":\"%s\"}", Shared.getInstance().getToken().get("accessToken")));
+            session.getBasicRemote().sendText(String.format("{\"token\":\"%s\"}", Shared.getInstance().getServerToken().get("accessToken")));
         } catch (IOException e) {
-            e.printStackTrace();
+            LOGGER.error("Error in sending the message on open", e);
         }
         self.webSocketListener.onOpen();
         self.waiting = false;
@@ -111,7 +115,7 @@ public class MarketDataStreaming implements StreamingService {
         try {
             self.session.getBasicRemote().sendText(message.toString());
         } catch (Exception e) {
-            e.printStackTrace();
+            LOGGER.error("Error in sending the message", e);
         }
     }
 
@@ -148,7 +152,6 @@ public class MarketDataStreaming implements StreamingService {
 
         self.container = ContainerProvider.getWebSocketContainer();
         String uri = "wss" + Shared.getInstance().getAPIUrl().substring(5) + endpoint + "?throttle-key=" + Shared.getInstance().getAppKey();
-        System.out.println(uri);
         try {
             self.container.connectToServer(MarketDataStreaming.class, URI.create(uri));
             int count = 300;
@@ -157,7 +160,7 @@ public class MarketDataStreaming implements StreamingService {
                 count--;
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            LOGGER.error("Error in sending connecting to server", e);
             self.waiting = false;
             self.webSocketListener.onClose("Error:" + e);
         }

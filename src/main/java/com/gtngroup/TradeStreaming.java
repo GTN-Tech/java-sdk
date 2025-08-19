@@ -76,7 +76,7 @@ public class TradeStreaming implements StreamingService{
 
             HttpClient client = HttpClient.newHttpClient();
             HttpRequest request = HttpRequest.newBuilder()
-                    .header("Authorization", "Bearer " + Shared.getInstance().getToken().get("accessToken").toString())
+                    .header("Authorization", "Bearer " + Shared.getInstance().getServerToken().get("accessToken").toString())
                     .header("Throttle-Key", Shared.getInstance().getAppKey())
                     .uri(URI.create(Shared.getInstance().getAPIUrl() + endpoint + "?events=" + events))
                     .GET()

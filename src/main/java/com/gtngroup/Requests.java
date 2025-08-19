@@ -1,17 +1,17 @@
 package com.gtngroup;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.nio.charset.StandardCharsets;
-
+import com.gtngroup.exception.UnknownCustomerException;
 import com.gtngroup.util.Params;
 import com.gtngroup.util.Utils;
-import org.json.JSONException;
 import org.json.JSONObject;
+
+import java.io.IOException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 /**
  * (C) Copyright 2010-2025 Global Trading Network. All Rights Reserved.
@@ -19,24 +19,28 @@ import org.json.JSONObject;
  */
 public class Requests {
 
+    private static final Logger LOGGER = LogManager.getLogger(Auth.class);
+
     /**
      * HTTP GET method
+     *
      * @param endpoint to call
      * @return JSON response
      * @throws IOException on error
      */
-    protected static JSONObject get(String endpoint) throws IOException {
-        return get(endpoint, new Params());
+    protected static JSONObject get(String endpoint, String customerNumber) throws Exception {
+        return get(endpoint, new Params(), customerNumber);
     }
 
     /**
      * HTTP GET method
+     *
      * @param endpoint to call
-     * @param payload to send to the endpoint
+     * @param payload  to send to the endpoint
      * @return JSON response
      * @throws IOException on error
      */
-    protected static JSONObject get(String endpoint, Params payload) throws IOException {
+    protected static JSONObject get(String endpoint, Params payload, String customerNumber) throws Exception {
 
         int count = 0;
         StringBuilder paramString = new StringBuilder();
@@ -51,52 +55,56 @@ public class Requests {
             paramString.append(payload.get(key));
             count++;
         }
-        return sendRequest(endpoint + paramString, "GET", null);
+        return sendRequest(endpoint + paramString, "GET", (String)null, customerNumber);
     }
 
     /**
      * HTTP POST method
+     *
      * @param endpoint to call
-     * @param payload to send to the endpoint
+     * @param payload  to send to the endpoint
      * @return JSON response
      * @throws IOException on error
      */
-    protected static JSONObject post(String endpoint, Params payload) throws IOException {
-        return sendRequest(endpoint, "POST", payload.toString());
+    protected static JSONObject post(String endpoint, Params payload, String customerNumber) throws Exception {
+        return sendRequest(endpoint, "POST", payload.toString(), customerNumber);
     }
 
     /**
      * HTTP POST method
+     *
      * @param endpoint to call
-     * @param payload to send to the endpoint
-     * @param token to send
+     * @param payload  to send to the endpoint
+     * @param token    to send
      * @return JSON response
      * @throws IOException on error
      */
-    protected static JSONObject post(String endpoint, String payload, String token) throws IOException {
-        return sendRequest(endpoint, "POST", payload, token);
+    protected static JSONObject post(String endpoint, Params payload, String token, String customerNumber) throws Exception {
+        return sendRequest(endpoint, "POST", payload.toString(), token, customerNumber);
     }
 
     /**
      * HTTP PATCH method
+     *
      * @param endpoint to call
-     * @param payload to send to the endpoint
-     * @param token to send
+     * @param payload  to send to the endpoint
+     * @param token    to send
      * @return JSON response
      * @throws IOException on error
      */
-    protected static JSONObject patch(String endpoint, String payload, String token) throws IOException {
-        return sendRequest(endpoint, "PATCH", payload, token);
+    protected static JSONObject patch(String endpoint, Params payload, String token, String customerNumber) throws Exception {
+        return sendRequest(endpoint, "PATCH", payload.toString(), token, customerNumber);
     }
 
     /**
      * HTTP DELETE method
+     *
      * @param endpoint to call
-     * @param payload to send to the endpoint
+     * @param payload  to send to the endpoint
      * @return JSON response
      * @throws IOException on error
      */
-    public static JSONObject delete(String endpoint, Params payload) throws IOException {
+    public static JSONObject delete(String endpoint, Params payload, String customerNumber) throws Exception {
         int count = 0;
         StringBuilder paramString = new StringBuilder();
         for (String key : payload.keySet()) {
@@ -111,112 +119,99 @@ public class Requests {
             count++;
         }
 
-        return sendRequest(endpoint + paramString, "DELETE", null, null);
+        return sendRequest(endpoint + paramString, "DELETE", null, null, customerNumber);
     }
 
     /**
      * Send the request to the server
+     *
      * @param endpoint to call
-     * @param method GET, POST, PATCH, DELETE
-     * @param payload to send with the endpoint
+     * @param method   GET, POST, PATCH, DELETE
+     * @param payload  to send with the endpoint
      * @return endpoint response as per the API documentation
      * @throws IOException on error
      */
-    private static JSONObject sendRequest(String endpoint, String method, String payload) throws IOException {
-        return sendRequest(endpoint, method,payload, null);
+    private static JSONObject sendRequest(String endpoint, String method, String payload, String customerNumber) throws Exception {
+        return sendRequest(endpoint, method,payload, null, customerNumber);
     }
 
     /**
      * Send the request to the server
+     *
      * @param endpoint to call
-     * @param method GET, POST, PATCH, DELETE
-     * @param payload to send with the endpoint
-     * @param token authorisation token
+     * @param method   GET, POST, PATCH, DELETE
+     * @param payload  to send with the endpoint
+     * @param token    authorisation token
      * @return endpoint response as per the API documentation
      * @throws IOException on error
      */
-    private static JSONObject sendRequest(String endpoint, String method, String payload, String token) throws IOException {
 
-        URL url;
+    private static JSONObject sendRequest(String endpoint, String method, Params payload, String token) throws Exception {
+        return sendRequest(endpoint, method, payload.toString(), token, null);
+    }
+    private static JSONObject sendRequest(String endpoint, String method, String payload, String token, String customerNumber) throws Exception {
 
-        if (endpoint.charAt(0) != '/'){
-            url = new URL(Shared.getInstance().getAPIUrl() + "/" + endpoint);
+        URI url;
+        String responseBody;
+
+        if (endpoint.charAt(0) != '/') {
+            url = URI.create(Shared.getInstance().getAPIUrl() + "/" + endpoint);
         } else {
-            url = new URL(Shared.getInstance().getAPIUrl() + endpoint);
+            url = URI.create(Shared.getInstance().getAPIUrl() + endpoint);
         }
 
-
-        HttpURLConnection conn = null;
-        BufferedReader reader = null;
-        StringBuilder response;
+        HttpClient client = HttpClient.newHttpClient();
 
         try {
-            conn = (HttpURLConnection) url.openConnection();
-            conn.setRequestMethod(method);
-            conn.setRequestProperty("Content-Type", "application/json");
+            HttpRequest.Builder request = HttpRequest.newBuilder()
+                    .uri(url)
+                    .header("Content-Type", "application/json");
 
             if (token != null) {
-                conn.setRequestProperty("Authorization",  token);
+                request.header("Authorization", token);
             } else {
                 try {
-                    token = Utils.getMapData("accessToken", Shared.getInstance().getToken()).toString();
-                    if (token != null) {
-                        conn.setRequestProperty("Authorization", "Bearer " + token);
+                    if (customerNumber != null) {
+                        token = Shared.getInstance().getCustomerAccessToken(customerNumber);
+                    } else {
+                        token = Utils.getMapData("accessToken", Shared.getInstance().getServerToken()).toString();
                     }
+                    if (token != null) {
+                        request.header("Authorization", "Bearer " + token);
+                    } else {
+                        throw new UnknownCustomerException(String.format("No valid token available for the customer %s. Try api.initCustomer() first", customerNumber));
+                    }
+                } catch (UnknownCustomerException e){
+                    throw e;
                 } catch (Exception e) {
                     //e.printStackTrace();
                 }
             }
 
-            conn.setRequestProperty("Throttle-Key", Shared.getInstance().getAppKey());
-            conn.setRequestProperty("User-Agent", "GTN-SDK-Java");
+            request.header("Throttle-Key", Shared.getInstance().getAppKey());
+            request.header("User-Agent", "GTN-SDK-Java/0.4.0");
 
             if (payload != null && !payload.isEmpty()) {
-                conn.setDoOutput(true);
-                try (OutputStream os = conn.getOutputStream()) {
-                    byte[] input = payload.getBytes(StandardCharsets.UTF_8);
-                    os.write(input, 0, input.length);
-                }
+                request.method(method, HttpRequest.BodyPublishers.ofString(payload));
+            }else {
+                request.method(method, HttpRequest.BodyPublishers.ofString(""));
             }
 
-            int responseCode = conn.getResponseCode();
+            LOGGER.debug(String.format("requesting %s for %s%n", url, customerNumber == null ? "server token": "customer " + customerNumber));
+            HttpResponse<String> response = client.send(request.build(), HttpResponse.BodyHandlers.ofString());
+
+            int responseCode = response.statusCode();
 
             JSONObject responseObject = new JSONObject();
             responseObject.put("http_status", responseCode);
 
-            if (responseCode >= 200 && responseCode < 300) {
-                reader = new BufferedReader(new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8));
-            } else {
-                reader = new BufferedReader(new InputStreamReader(conn.getErrorStream(), StandardCharsets.UTF_8));
-            }
+            responseBody = response.body();
+            responseObject.put("response", new JSONObject(responseBody));
 
-            response = new StringBuilder();
-            String line;
-            while ((line = reader.readLine()) != null) {
-                response.append(line);
-            }
-            //System.out.println(response);
-            try {
-                responseObject.put("response", new JSONObject(response.toString()));
-            } catch (JSONException e) {
-                e.printStackTrace();
-                responseObject.put("response", "{}");
-            }
             return responseObject;
         } catch (Exception e) {
             e.printStackTrace();
             throw e;
-        } finally {
-            try {
-                if (reader != null) reader.close();
-            } catch (Exception e) {
-                // do nothing
-            }
-            try {
-                if (conn != null) conn.disconnect();
-            } catch (Exception e) {
-                // do nothing
-            }
         }
     }
 }

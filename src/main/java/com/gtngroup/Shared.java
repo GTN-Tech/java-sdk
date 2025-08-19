@@ -1,7 +1,14 @@
 package com.gtngroup;
 
 import com.gtngroup.util.Params;
+import com.gtngroup.util.Utils;
 import org.json.JSONObject;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * (C) Copyright 2010-2025 Global Trading Network. All Rights Reserved.
@@ -15,20 +22,17 @@ public class Shared {
     private String privateKey;
     private String institution;
     private int institutionId;
-    private String customerNumber;
     private String userId;
-    private JSONObject customerToken;
     private JSONObject serverToken;
     private String assertion;
-    private String user;
-    private String pass;
     private String channel;
-    private boolean ready;
 
     private static Params authMap;
+    private final Map<String, JSONObject> customerMap;
 
     private Shared() {
         initAuthMap();
+        customerMap = Collections.synchronizedMap(new HashMap<>());
         // Private constructor to prevent instantiation
     }
 
@@ -39,7 +43,7 @@ public class Shared {
         return instance;
     }
 
-    private static void initAuthMap(){
+    private static void initAuthMap() {
         authMap = new Params()
                 .add("DWM_SERVER_TOKEN", "/microinvest/v1.0/auth/server/token")
                 .add("DWM_SERVER_TOKEN_REFRESH", "/microinvest/v1.0/auth/server/refresh-token")
@@ -52,42 +56,27 @@ public class Shared {
                 .add("TRADE_CUSTOMER_TOKEN_REFRESH", "/trade/auth/customer/token/refresh");
     }
 
-    protected static String getAuthURL(String code){
+    protected static String getAuthURL(String code) {
         String urlID = Shared.getInstance().getChannel() + "_" + code;
-        return authMap.getString( urlID);
+        return authMap.getString(urlID);
     }
 
     protected void init(String apiUrl, String appKey, String appSecret, String privateKey,
-                     String institution, String customerNumber, String userId, String user,
-                        String pass, String channel, String institutionId) {
+                        String institution, String userId,
+                        String channel, String institutionId) {
         this.apiUrl = apiUrl;
         this.appKey = appKey;
         this.appSecret = appSecret;
         this.privateKey = privateKey;
         this.institution = institution;
         this.institutionId = Integer.parseInt(institutionId);
-        this.customerNumber = customerNumber;
         this.userId = userId;
-        this.user = user;
-        this.pass = pass;
         this.channel = channel;
-        this.ready = true;
-    }
-
-    protected void destroy() {
-        this.ready = false;
-        this.apiUrl = null;
-        this.appKey = null;
-        this.appSecret = null;
-        this.privateKey = null;
-        this.institution = null;
-        this.customerNumber = null;
-        this.customerToken = null;
-        this.serverToken = null;
     }
 
     /**
      * Get the URL of the API hub
+     *
      * @return the url
      */
     protected String getAPIUrl() {
@@ -96,6 +85,7 @@ public class Shared {
 
     /**
      * Get the App key assigned to the institution
+     *
      * @return the app key
      */
     protected String getAppKey() {
@@ -104,6 +94,7 @@ public class Shared {
 
     /**
      * Get the App secret assigned to the institution
+     *
      * @return the app secret
      */
     protected String getAppSecret() {
@@ -112,6 +103,7 @@ public class Shared {
 
     /**
      * Get the private key assigned to the institution
+     *
      * @return private key key
      */
     protected String getPrivateKey() {
@@ -120,6 +112,7 @@ public class Shared {
 
     /**
      * Get the institution code
+     *
      * @return the institution code
      */
     protected String getInstitution() {
@@ -134,19 +127,8 @@ public class Shared {
     }
 
     /**
-     * Get the logged in customer number
-     * @return the customer number
-     */
-    protected String getCustomerNumber() {
-        if (isUserMode()){
-            return getCustomerToken().getString("customerNumber");
-        } else {
-            return customerNumber;
-        }
-    }
-
-    /**
      * Get the user id
+     *
      * @return the user id
      */
     protected String getUserId() {
@@ -154,27 +136,8 @@ public class Shared {
     }
 
     /**
-     * Get the customer token for the session
-     * @return the customer token
-     */
-    protected JSONObject getCustomerToken() {
-        return customerToken;
-    }
-
-    /**
-     * Get the active token, could be institution or the customer
-     * @return the token
-     */
-    protected JSONObject getToken() {
-        if (isCustomerMode()) {
-            return customerToken;
-        } else {
-            return serverToken;
-        }
-    }
-
-    /**
      * Get the server token for the session
+     *
      * @return the server token
      */
     protected JSONObject getServerToken() {
@@ -183,6 +146,7 @@ public class Shared {
 
     /**
      * Get the assertion
+     *
      * @return the assertion
      */
     protected String getAssertion() {
@@ -191,6 +155,7 @@ public class Shared {
 
     /**
      * Set the assertion
+     *
      * @param assertion string
      */
     protected void setAssertion(String assertion) {
@@ -198,55 +163,12 @@ public class Shared {
     }
 
     /**
-     * Set the customer token for the session
-     * @param customerToken the customer token object
-     */
-    protected void setCustomerToken(JSONObject customerToken) {
-        this.customerToken = customerToken;
-    }
-
-    /**
      * Set the server token for the session
+     *
      * @param serverToken object
      */
     protected void setServerToken(JSONObject serverToken) {
         this.serverToken = serverToken;
-    }
-
-
-    /**
-     * @return the username
-     */
-    protected String getUser() {
-        return user;
-    }
-
-    /**
-     * @return the password
-     */
-    protected String getPass() {
-        return pass;
-    }
-
-    /**
-     * @return true if the session is in customer mode
-     */
-    protected boolean isCustomerMode(){
-        return customerNumber != null || user != null;
-    }
-
-    /**
-     * @return true if the session is in server mode
-     */
-    protected boolean isServerMode(){
-        return customerNumber == null && user == null;
-    }
-
-    /**
-     * @return true if the session is in user mode
-     */
-    protected boolean isUserMode(){
-        return user != null;
     }
 
     /**
@@ -254,6 +176,74 @@ public class Shared {
      */
     public String getChannel() {
         return channel;
+    }
+
+    /**
+     * Get the token of a customer already logged in
+     * @param customerNumber in request
+     * @return the token
+     */
+    protected JSONObject getCustomerToken(String customerNumber) {
+        return customerMap.get(customerNumber);
+    }
+
+    /**
+     * Set the token of a customer already logged in
+     * @param customerNumber in request
+     * @param token of the customer
+     */
+    protected void setCustomerToken(String customerNumber, JSONObject token) {
+        customerMap.put(customerNumber, token);
+    }
+
+    /**
+     * Get the access token of a customer logged in
+     * @param customerNumber in request
+     * @return the access token
+     */
+    protected String getCustomerAccessToken(String customerNumber) {
+        try {
+            return Utils.getMapData("accessToken", customerMap.get(customerNumber)).toString();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /**
+     * Get the refresh token of a customer logged in
+     * @param customerNumber in request
+     * @return the access token
+     */
+    protected String getCustomerRefreshToken(String customerNumber) {
+        try {
+            return Utils.getMapData("refreshToken", customerMap.get(customerNumber)).toString();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /**
+     * remove a customer session
+     * @param customerNumber to remove
+     */
+    protected void removeCustomer(String customerNumber) {
+        customerMap.remove(customerNumber);
+    }
+
+
+    /**
+     * list all active customer numbers
+     * @return list of customer numbers
+     */
+    protected synchronized List<String> getActiveCustomers() {
+        return new ArrayList<>(customerMap.keySet());
+    }
+
+    /**
+     * remove all customers in the session
+     */
+    protected void removeAllCustomers() {
+        customerMap.clear();
     }
 }
 

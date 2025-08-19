@@ -97,10 +97,10 @@ public class Params extends HashMap<String, Object> {
         return this;
     }
 
-    public Params setCustomerNumber(String customerNumber) {
+    /*public Params setCustomerNumber(String customerNumber) {
         this.add("customer_number", customerNumber);
         return this;
-    }
+    }*/
 
     public Params setPrivateKey(String privateKey) {
         this.add("private_key", privateKey);
@@ -112,10 +112,10 @@ public class Params extends HashMap<String, Object> {
         return this;
     }
 
-    public Params setPassword(String password) {
+    /*public Params setPassword(String password) {
         this.add("password", password);
         return this;
-    }
+    }*/
 
     public Params setChannel(String channel) {
         this.add("channel", channel);

@@ -6,7 +6,7 @@
 
     <groupId>com.gtngroup</groupId>
     <artifactId>gtn-embed-sdk</artifactId>
-    <version>0.3.0</version>
+    <version>0.9.0</version>
     <packaging>jar</packaging>
 
     <name>GTN Java SDK</name>
@@ -45,7 +45,7 @@
         <dependency>
             <groupId>org.json</groupId>
             <artifactId>json</artifactId>
-            <version>20230618</version>
+            <version>20250517</version>
         </dependency>
         <dependency>
             <groupId>jakarta.websocket</groupId>
@@ -62,6 +62,16 @@
             <groupId>org.glassfish.tyrus.bundles</groupId>
             <artifactId>tyrus-standalone-client</artifactId>
             <version>2.2.0</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-api</artifactId>
+            <version>2.25.1</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-core</artifactId>
+            <version>2.25.1</version>
         </dependency>
     </dependencies>
 

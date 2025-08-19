@@ -4,20 +4,18 @@ import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.gtngroup.util.Params;
 import com.gtngroup.util.Utils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import javax.crypto.SecretKeyFactory;
-import javax.crypto.spec.PBEKeySpec;
 import java.security.KeyFactory;
-import java.security.NoSuchAlgorithmException;
 import java.security.interfaces.RSAPrivateKey;
-import java.security.spec.InvalidKeySpecException;
-import java.security.spec.KeySpec;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.util.Base64;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -29,60 +27,15 @@ public class Auth {
     private static boolean active;
     private static Thread thread;
 
+    private static final Logger LOGGER = LogManager.getLogger(Auth.class);
+
     /**
      * Initialise the session
      *
      * @return the authentication status
      */
     protected static JSONObject init() {
-        if (Shared.getInstance().isUserMode()) {
-            return initUser();
-        } else {
-            return initInstitution();
-        }
-    }
-
-    /**
-     * Initialise in user/pass mode
-     *
-     * @return the authentication status
-     */
-    private static JSONObject initUser() {
-        AuthStatus authStatus = AuthStatus.AUTH_SUCCESS;
-
-        JSONObject customerToken = getCustomerTokenForUser(
-                Shared.getInstance().getUser(),
-                Shared.getInstance().getPass(),
-                Shared.getInstance().getInstitution());
-
-
-        int status = customerToken.getInt("http_status");
-
-        if (status == 200 &&
-                Utils.getMapData("response/status", customerToken).equals("SUCCESS")) {
-            System.out.println("Customer authentication success");
-
-            Shared.getInstance().setCustomerToken(customerToken.getJSONObject("response"));
-            System.out.println("GTN API initiated in Customer mode.");
-        } else {
-            if (customerToken.getJSONObject("response").isEmpty()) {
-                System.out.println("Customer authentication failed. http status {status} and token is None");
-            } else {
-                System.err.println("Customer authentication failed. status {status} and token status {customer_token['status']}");
-            }
-            authStatus = AuthStatus.CUSTOMER_AUTH_FAILED;
-        }
-
-        if (authStatus == AuthStatus.AUTH_SUCCESS) {
-            startThread();
-        } else {
-            if (status == 200) {
-                status = -1;
-            }
-        }
-
-        return new JSONObject().put("http_status", status).put("auth_status", authStatus.getValue());
-
+        return initInstitution();
     }
 
     /**
@@ -111,8 +64,7 @@ public class Auth {
         }
 
         Shared.getInstance().setAssertion(assertion);
-        System.out.println("Assertion created successfully");
-
+        LOGGER.debug("Assertion created successfully");
 
         Params params = new Params("assertion", Shared.getInstance().getAssertion())
                 .add("authorization", basicAuth);
@@ -125,45 +77,14 @@ public class Auth {
                 Utils.getMapData("response/status", serverToken).equals("SUCCESS"))
 
         ) {
-            System.out.println("Institution authentication success");
+            LOGGER.debug("Institution authentication success");
+            // test serverToken.getJSONObject("response").put("accessTokenExpiresAt", System.currentTimeMillis() + 35_000L);
             Shared.getInstance().setServerToken(serverToken.getJSONObject("response"));
-
-//            Shared.getInstance().getServerToken().put("accessTokenExpiresAt", System.currentTimeMillis() + 60_000L);
-//            System.out.println("exp set " + (System.currentTimeMillis() + 60_000L));
-
-            if (Shared.getInstance().isCustomerMode()) {
-                params = new Params("customerNumber", Shared.getInstance().getCustomerNumber())
-                        .add("accessToken", Shared.getInstance().getServerToken().getString("accessToken"));
-                JSONObject customerToken = getCustomerToken(params, basicAuth);
-
-                httpStatus = customerToken.getInt("http_status");
-                if (httpStatus == 200 &&
-                        !customerToken.getJSONObject("response").isEmpty() &&
-                        Utils.getMapData("response/status", customerToken).equals("SUCCESS")) {
-                    System.out.println("Customer authentication success");
-
-                    Shared.getInstance().setCustomerToken(customerToken.getJSONObject("response"));
-//                    Shared.getInstance().getCustomerToken().put("accessTokenExpiresAt", System.currentTimeMillis() + 60_000L);
-//                    System.out.println("exp set " + (System.currentTimeMillis() + 60_000L));
-
-                    System.out.println("GTN API initiated in Customer mode.");
-                } else {
-                    if (customerToken.getJSONObject("response").isEmpty()) {
-                        System.out.println("Customer authentication failed. http status " + httpStatus + " and token is empty");
-                    } else {
-                        System.out.println("Customer authentication failed. status " +
-                                httpStatus +
-                                " and token status " + Utils.getMapData("response/status", customerToken));
-                    }
-                    authStatus = AuthStatus.CUSTOMER_AUTH_FAILED;
-                }
-            }
-
         } else {
             if (serverToken.getJSONObject("response").isEmpty()) {
-                System.out.println("Server authentication failed. http status " + httpStatus + " and token is empty");
+                LOGGER.debug("Server authentication failed. http status " + httpStatus + " and token is empty");
             } else {
-                System.out.println("Server authentication failed. status " +
+                LOGGER.debug("Server authentication failed. status " +
                         httpStatus +
                         " and token status " + Utils.getMapData("response/status", serverToken));
             }
@@ -171,11 +92,56 @@ public class Auth {
         }
 
         if (authStatus.equals(AuthStatus.AUTH_SUCCESS)) {
+            active = true;
             startThread();
         } else {
             if (httpStatus == 200) {
                 httpStatus = -1;
             }
+        }
+
+        return new JSONObject().put("http_status", httpStatus).put("auth_status", authStatus.getValue());
+    }
+
+    /**
+     * Login a customer
+     * @param customerNumber to login
+     * @return the token
+     */
+    protected static JSONObject initCustomer(String customerNumber) {
+
+        AuthStatus authStatus = AuthStatus.AUTH_SUCCESS;
+
+        String basicAuth = getBasicAuth(
+                Shared.getInstance().getAppKey(),
+                Shared.getInstance().getAppSecret()
+        );
+
+        Params params = new Params("customerNumber", customerNumber)
+                .add("accessToken", Shared.getInstance().getServerToken().getString("accessToken"));
+        JSONObject customerToken = getCustomerToken(params, basicAuth);
+
+        LOGGER.debug(customerToken.toString());
+
+        int httpStatus = customerToken.getInt("http_status");
+        if (httpStatus == 200 &&
+                !customerToken.getJSONObject("response").isEmpty() &&
+                Utils.getMapData("response/status", customerToken).equals("SUCCESS")) {
+            LOGGER.debug("Customer authentication success");
+
+            // test customerToken.getJSONObject("response").put("accessTokenExpiresAt", System.currentTimeMillis() + 30_000L);
+            Shared.getInstance().setCustomerToken(customerNumber, customerToken.getJSONObject("response"));
+
+            LOGGER.debug("GTN API initiated in Customer mode.");
+        } else {
+            if (customerToken.getJSONObject("response").isEmpty()) {
+                LOGGER.debug("Customer authentication failed. http status " + httpStatus + " and token is empty");
+            } else {
+                LOGGER.debug("Customer authentication failed. status " +
+                        httpStatus +
+                        " and token status " + Utils.getMapData("response/status", customerToken));
+            }
+            authStatus = AuthStatus.CUSTOMER_AUTH_FAILED;
         }
 
         return new JSONObject().put("http_status", httpStatus).put("auth_status", authStatus.getValue());
@@ -208,17 +174,16 @@ public class Auth {
 
             Date now = new Date();
 
-            String assertion = JWT.create()
+            return JWT.create()
                     .withIssuer(appKey)
                     .withPayload(payload)
                     .withExpiresAt(accessTokenExpiry)
                     .withIssuedAt(now)
                     .withNotBefore(now)
                     .sign(algorithm);
-            return assertion;
 
         } catch (Exception e) {
-            e.printStackTrace();
+            LOGGER.error("Error creating the JWT token", e);
         }
         return null;
     }
@@ -261,7 +226,7 @@ public class Auth {
             PKCS8EncodedKeySpec keySpec = new PKCS8EncodedKeySpec(pvtKeyBytes);
             return (RSAPrivateKey) kf.generatePrivate(keySpec);
         } catch (Exception e) {
-            e.printStackTrace();
+            LOGGER.error("Error creating private key", e);
         }
         return null;
     }
@@ -282,7 +247,8 @@ public class Auth {
 
     /**
      * Check for hexa decimal patten in s string
-     * @param str
+     *
+     * @param str to check
      * @return true if the sring is in HEX format
      */
     private static boolean isLikelyHex(String str) {
@@ -295,14 +261,14 @@ public class Auth {
      *
      * @param params map
      * @param token  assertion
-     * @return
+     * @return the server token
      */
     private static JSONObject getServerToken(Params params, String token) {
         try {
 
-            return Requests.post(Shared.getInstance().getAuthURL("SERVER_TOKEN"), params.toString(), token);
+            return Requests.post(Shared.getAuthURL("SERVER_TOKEN"), params, token, null);
         } catch (Exception e) {
-            e.printStackTrace();
+            LOGGER.error("Error getting the Server token", e);
             return new JSONObject().put("http_status", -1).put("response", new JSONObject());
         }
     }
@@ -316,9 +282,9 @@ public class Auth {
         try {
             String refreshToken = Shared.getInstance().getServerToken().getString("refreshToken");
             Params params = new Params("refreshToken", refreshToken);
-            return Requests.post(Shared.getInstance().getAuthURL("SERVER_TOKEN_REFRESH"), params);
+            return Requests.post(Shared.getAuthURL("SERVER_TOKEN_REFRESH"), params, null);
         } catch (Exception e) {
-            e.printStackTrace();
+            LOGGER.error("Error getting the Server refresh token", e);
             return new JSONObject().put("http_status", -1).put("response", new JSONObject());
         }
     }
@@ -328,14 +294,14 @@ public class Auth {
      *
      * @param params map
      * @param token  assertion
-     * @return
+     * @return the customer token
      */
     private static JSONObject getCustomerToken(Params params, String token) {
         try {
 
-            return Requests.post(Shared.getInstance().getAuthURL("CUSTOMER_TOKEN"), params.toString(), token);
+            return Requests.post(Shared.getAuthURL("CUSTOMER_TOKEN"), params, "", null);
         } catch (Exception e) {
-            e.printStackTrace();
+            LOGGER.error("Error getting the Customer token", e);
             return new JSONObject().put("http_status", -1).put("response", new JSONObject());
         }
     }
@@ -345,38 +311,16 @@ public class Auth {
      *
      * @return new token
      */
-    private static JSONObject getCustomerTokenRefresh() {
+    protected static JSONObject getCustomerTokenRefresh(String customerNumber) {
         try {
-            String refreshToken = Shared.getInstance().getCustomerToken().getString("refreshToken");
+            String refreshToken = Shared.getInstance().getCustomerRefreshToken(customerNumber);
             Params params = new Params("refreshToken", refreshToken);
-            return Requests.post(Shared.getInstance().getAuthURL("CUSTOMER_TOKEN_REFRESH"), params);
+            return Requests.post(Shared.getAuthURL("CUSTOMER_TOKEN_REFRESH"), params, null);
         } catch (Exception e) {
-            e.printStackTrace();
+            LOGGER.error("Error getting the Customer refresh token", e);
             return new JSONObject().put("http_status", -1).put("response", new JSONObject());
         }
-    }
 
-    /**
-     * Get the customer token for the user/pass login
-     *
-     * @param user        string
-     * @param passw       string
-     * @param institution string
-     * @return the customer token
-     */
-    private static JSONObject getCustomerTokenForUser(String user, String passw, String institution) {
-        try {
-            String encoded_pw = hashPassword(passw);
-            Params params = new Params();
-            params.add("loginName", user)
-                    .add("password", encoded_pw)
-                    .add("institutionCode", institution)
-                    .add("encryptionType", 2);
-            return Requests.post("/trade/auth/user-login", params);
-        } catch (Exception e) {
-            e.printStackTrace();
-            return new JSONObject().put("http_status", -1).put("response", "{}");
-        }
     }
 
     /**
@@ -384,7 +328,6 @@ public class Auth {
      */
     protected static void logout() {
         active = false;
-        Shared.getInstance().setCustomerToken(null);
         try {
             thread.interrupt();
         } catch (Exception e) {
@@ -405,104 +348,120 @@ public class Auth {
     }
 
     /**
-     * Hash the password
-     *
-     * @param password string
-     * @return the hashed password
-     */
-    private static String hashPassword(String password) {
-        String salt = "MUBASHER";
-        try {
-            // Derive the key using PBKDF2 with HMAC-SHA-512
-            SecretKeyFactory factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA512");
-            KeySpec spec = new PBEKeySpec(password.toCharArray(), salt.getBytes(), 10000, 512);
-            byte[] hash = factory.generateSecret(spec).getEncoded();
-            // Convert the resulting byte array into a hexadecimal string
-            StringBuilder hexString = new StringBuilder();
-            for (byte b : hash) {
-                String hex = Integer.toHexString(0xff & b);
-                if (hex.length() == 1) hexString.append('0');
-                hexString.append(hex);
-            }
-            return hexString.toString();
-        } catch (NoSuchAlgorithmException | InvalidKeySpecException e) {
-//            logger.error(" Error obtaining hashPassword,{}",e.toString());
-            e.printStackTrace();
-            return null;
-        }
-    }
-
-    /**
      * Start the key refresh thread
      */
     private static void startThread() {
-        thread = new Thread() {
-            @Override
-            public void run() {
-                active = true;
-                keyRefresh();
+        thread = new Thread(() -> {
+            while(active) {
+                boolean success = keyRefresh();
+                if (!success) {
+                    break;
+                }
+                sleep(100);
+                List<String> activeCustomers = Shared.getInstance().getActiveCustomers();
+                for (String customerNumber : activeCustomers) {
+                    keyRefresh(customerNumber);
+                    sleep(100);
+                }
+                sleep(10_000);
             }
-        };
+            Shared.getInstance().removeAllCustomers(); // get rid of all customers
+            //todo disconnect streaming clients
+        });
         thread.start();
+    }
+
+    /**
+     * refresh the server token
+     * @return true if successful
+     */
+    private static boolean keyRefresh() {
+        return keyRefresh(null);
     }
 
     /**
      * Refresh tokens when called by the thread
      */
-    private static void keyRefresh() {
-        while (active) {
+    private static boolean keyRefresh(String customerNumber) {
+        boolean serverToken = false;
+        try {
+            //LOGGER.debug("refreshing -> " + customerNumber);
+            JSONObject token;
+
+            if (customerNumber == null) {
+                token = Shared.getInstance().getServerToken();
+                serverToken = true;
+            } else {
+                token = Shared.getInstance().getCustomerToken(customerNumber);
+            }
+            long expMillis;
+
+            // first check the refresh token
             try {
-                String mode = "client";
-                if (Shared.getInstance().isServerMode()) {
-                    mode = "server";
-                }
+                expMillis = token.getLong("refreshTokenExpiresAt");
+            } catch (JSONException e) {
+                expMillis = token.getLong("refreshTokenExpiry"); //DWM
+            }
+            long delta = expMillis - System.currentTimeMillis();
 
-                JSONObject token = Shared.getInstance().getToken();
-                long expMillis = 0;
-                try {
-                    expMillis = token.getLong("refreshTokenExpiresAt");
-                } catch (JSONException e) {
-                    expMillis = token.getLong("refreshTokenExpiry"); //DWM
-                }
-                long delta = expMillis - System.currentTimeMillis();
-
-                if (delta < 50_000) {
-                    System.out.println("refresh token expired. logging out");
+            if (delta < 5_000) {
+                LOGGER.debug("refresh token expired. logging out");
+                if (serverToken) {
                     logout();
                 } else {
-                    try {
-                        expMillis = token.getLong("accessTokenExpiresAt");
-                    } catch (JSONException e) {
-                        expMillis = token.getLong("tokenExpiry"); // DWM
-                    }
-                    delta = expMillis - System.currentTimeMillis();
-                    if (delta > 0 && delta < 100_000) {
-                        System.out.printf("--> refreshing %s access token\n", mode);
-                        JSONObject refreshedToken;
-                        if (Shared.getInstance().isServerMode()) {
-                            refreshedToken = getServerTokenRefresh();
-                        } else {
-                            refreshedToken = getCustomerTokenRefresh();
-                        }
-                        if (refreshedToken.getInt("http_status") == 200) {
-                            if (Shared.getInstance().isServerMode()) {
-                                Shared.getInstance().setServerToken(refreshedToken.getJSONObject("response"));
-                            } else {
-                                Shared.getInstance().setCustomerToken(refreshedToken.getJSONObject("response"));
-                            }
-                        } else {
-                            System.out.printf("--> Error refreshing the %s token: %d\n", mode, (delta / 1000L));
-                        }
-                    }
+                    Shared.getInstance().removeCustomer(customerNumber);
                 }
-            } catch (Exception e) {
-                e.printStackTrace();
+                return false;
+            } else {
+                // now check the access token
+                try {
+                    expMillis = token.getLong("accessTokenExpiresAt");
+                } catch (JSONException e) {
+                    expMillis = token.getLong("tokenExpiry"); // DWM
+                }
+                delta = expMillis - System.currentTimeMillis();
+                //LOGGER.debug("access delta " + delta);
+                if (delta < 5_000) {
+                    //LOGGER.debug("--> refreshing %s access token\n", serverToken ? "server" : "customer");
+                    JSONObject refreshedToken;
+                    if (serverToken) {
+                        refreshedToken = getServerTokenRefresh();
+                    } else {
+                        refreshedToken = getCustomerTokenRefresh(customerNumber);
+                    }
+                    int http_status = refreshedToken.getInt("http_status");
+                    if (http_status == 200) {
+                        if (serverToken) {
+                            Shared.getInstance().setServerToken(refreshedToken.getJSONObject("response"));
+                        } else {
+                            // test refreshedToken.getJSONObject("response").put("accessTokenExpiresAt", System.currentTimeMillis() + 30_000L);
+                            Shared.getInstance().setCustomerToken(customerNumber, refreshedToken.getJSONObject("response"));
+                        }
+                        return true;
+                    } else {
+                        LOGGER.debug(String.format("Error refreshing the %s token: %d sec to expire. http status %d\n", serverToken ? "server" : "customer", (delta / 1000L), http_status));
+                        return false;
+                    }
+                } else { // no need to refresh now
+                    return true;
+                }
             }
-            try {
-                Thread.sleep(10_000);
-            } catch (InterruptedException e) {
-                // ignore
+        } catch (Exception e) {
+            if (serverToken) {
+                LOGGER.error("Error refreshing the Server token", e);
+            } else {
+                LOGGER.error("Error refreshing the Customer token for customer: " + customerNumber, e);
             }
+            return true;
+        }
+
+    }
+
+    private static void sleep(long millies) {
+        try {
+            Thread.sleep(millies);
+        } catch (InterruptedException e) {
+            // ignore
         }
     }
 }

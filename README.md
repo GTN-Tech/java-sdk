@@ -14,26 +14,26 @@ Maven:
 <dependency>
     <groupId>com.gtngroup</groupId>
     <artifactId>gtn-embed-sdk</artifactId>
-    <version>0.3.0</version>
+    <version>0.9.0</version>
 </dependency>
 ```
 
 Gradle:
 
 ```text
-implementation group: 'com.gtngroup', name: 'gtn-embed-sdk', version: '0.3.0'
+implementation group: 'com.gtngroup', name: 'gtn-embed-sdk', version: '0.4.0'
 ```
 
 Gradle Short:
 
 ```text
-implementation 'com.gtngroup:gtn-embed-sdk:0.3.0'
+implementation 'com.gtngroup:gtn-embed-sdk:0.4.0'
 ```
 
 Gradle Kotlin:
 
 ```kotlin
-implementation("com.gtngroup:gtn-embed-sdk:0.3.0")
+implementation("com.gtngroup:gtn-embed-sdk:0.4.0")
 ```
 
 ### API Authentication
@@ -57,9 +57,10 @@ For a connection to be established, it is required to have the following informa
 * `App Key`, provided by GTN
 * `App Secret`, provided by GTN
 * `Institution` Code, provided by GTN
-* `Customer Number` of the customer initiating the connection. (Optional: only in the customer mode)
 * `Private Key` of the institution, provided by GTN
 
+Following code snippet is to authenticate the **Institution**.<br>
+By authenticating the Institution, all endpoints authorised to the Institution token can me accessed  
 ```java
 import com.gtngroup.GTNAPI;
 import com.gtngroup.util.Params;
@@ -71,7 +72,6 @@ Params params=new Params()
         .setAppKey("my-app-key")
         .setAppSecret("my-app-secret")
         .setInstitution("MY-INST-CODE")
-        .setCustomerNumber("12345678")
         .setInstitutionId(MY-INST-ID-NUMBER)    // for Micro Invest customers only
         .setChannel("DWM")                      // for Micro Invest customers only
         .setPrivateKey("MY-PRIVATE-KEY");
@@ -89,7 +89,7 @@ authentication **status** is in the format
 }
 ```
 
-Once the _**gtnapi.init()**_ is success (i.e. <code>http_code == 200</code>), it is possible to access any **REST** and **Streaming** endpoints (authorised to the customer) by using the SDK.
+Once the _**gtnapi.init()**_ is success (i.e. <code>http_code == 200</code>), it is possible to access any **REST** and **Streaming** endpoints (authorised to the Institution) by using the SDK.
 Request, response parameter and formats are as per the [API Documentation](https://developer.globaltradingnetwork.com/rest-api-reference)
 
 Since the SDK is just a wrapper to the **REST API**, only following methods are available for API endpoints
@@ -104,6 +104,26 @@ and for streaming data
 * `api.getMarketDataStreamingService()` - for receiving streaming Trade Data
 * `api.Streaming.MarkgetTradeStreamingService()` - for receiving streaming Market Data
 
+### initialising a customer
+To initialise (login) a customer, following code snippet can be used (after the Institution login)
+
+```java
+response = api.initCustomer("customerNumber");
+```
+
+authentication **status** is in the format
+
+```json
+{
+    "http_status": 200,
+    "auth_status": "SUCCESS"
+}
+```
+When HTTP status is 200, the customer is ready to perform any REST endpoint authorised to the customer token.<br>
+When calling endpoints on behalf of a customer, all `get()`, `post()`, `patch()` and `delete()` methods should contain the `customerNumber` as the last parameter.
+
+See <u>**Getting customer details**</u> example below
+
 > [!IMPORTANT]
 > SDK does not provide anything not supported by the REST API. See [API Documentation](https://developer.globaltradingnetwork.com/rest-api-reference)
 
@@ -111,7 +131,7 @@ and for streaming data
 
 #### Creating a customer <img src="https://img.shields.io/badge/REST-blue"/>
 
-Call the `HTTP Post` method to the endpoint `customer/account` to create a customer
+Call the `HTTP POST` method to the endpoint `customer/account` to create a customer
 
 ```java
 Params params = new Params()
@@ -130,7 +150,12 @@ System.out.println(response.toString(4));
 Call the `HTTP Get` method to the endpoint `customer/account` to get customer details
 
 ```java
+// using the institution token
 JSONObject response = api.get("/trade/bo/v1.2.1/customer/account")
+System.out.println(response.toString(4));
+
+// using the customer token
+JSONObject response = api.get("/trade/bo/v1.2.1/customer/account", customerNumber)
 System.out.println(response.toString(4));
 ```
 
