@@ -46,7 +46,7 @@ public class GTNAPI {
         if (isInitialised()) {
             throw new RuntimeException("Already initialised. init() can be called only once per session");
         }
-        setInitialised();
+        setInitialised(true);
         return Auth.init();
     }
 
@@ -74,8 +74,8 @@ public class GTNAPI {
     /**
      * internal call to set initialise status
      */
-    private static void setInitialised() {
-        GTNAPI.initialised = true;
+    private static void setInitialised(boolean value) {
+        GTNAPI.initialised = value;
     }
 
 
@@ -86,6 +86,7 @@ public class GTNAPI {
         Auth.logout();
         TradeStreaming.getInstance().disconnect();
         MarketDataStreaming.getInstance().disconnect();
+        setInitialised(false);
     }
 
     /**
