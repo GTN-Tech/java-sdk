@@ -2,6 +2,7 @@ package com.gtngroup;
 
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
+import com.gtngroup.exception.RequestException;
 import com.gtngroup.util.Params;
 import com.gtngroup.util.Utils;
 import org.apache.logging.log4j.LogManager;
@@ -267,6 +268,9 @@ public class Auth {
         try {
 
             return Requests.post(Shared.getAuthURL("SERVER_TOKEN"), params, token, null);
+        } catch (RequestException e){
+            LOGGER.error(e.getMessage(), e);
+            return new JSONObject().put("http_status", e.getStatusCode()).put("response", new JSONObject("message", e.getDescription()));
         } catch (Exception e) {
             LOGGER.error("Error getting the Server token", e);
             return new JSONObject().put("http_status", -1).put("response", new JSONObject());

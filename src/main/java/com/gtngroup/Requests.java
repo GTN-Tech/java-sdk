@@ -1,5 +1,6 @@
 package com.gtngroup;
 
+import com.gtngroup.exception.RequestException;
 import com.gtngroup.exception.UnknownCustomerException;
 import com.gtngroup.util.Params;
 import com.gtngroup.util.Utils;
@@ -149,10 +150,12 @@ public class Requests {
     private static JSONObject sendRequest(String endpoint, String method, Params payload, String token) throws Exception {
         return sendRequest(endpoint, method, payload.toString(), token, null);
     }
-    private static JSONObject sendRequest(String endpoint, String method, String payload, String token, String customerNumber) throws Exception {
+    private static JSONObject sendRequest(String endpoint, String method, String payload, String token, String customerNumber) throws RequestException {
 
         URI url;
-        String responseBody;
+        String responseBody = null;
+        int responseCode = -1;
+
 
         if (endpoint.charAt(0) != '/') {
             url = URI.create(Shared.getInstance().getAPIUrl() + "/" + endpoint);
@@ -189,7 +192,7 @@ public class Requests {
             }
 
             request.header("Throttle-Key", Shared.getInstance().getAppKey());
-            request.header("User-Agent", "GTN-SDK-Java/0.4.0");
+            request.header("User-Agent", "GTN-SDK-Java/0.9.1");
 
             if (payload != null && !payload.isEmpty()) {
                 request.method(method, HttpRequest.BodyPublishers.ofString(payload));
@@ -200,19 +203,19 @@ public class Requests {
             LOGGER.debug(String.format("requesting %s for %s%n", url, customerNumber == null ? "server token": "customer " + customerNumber));
             HttpResponse<String> response = client.send(request.build(), HttpResponse.BodyHandlers.ofString());
 
-            int responseCode = response.statusCode();
+            responseCode = response.statusCode();
 
             JSONObject responseObject = new JSONObject();
             responseObject.put("http_status", responseCode);
 
             responseBody = response.body();
+            LOGGER.debug("Response --> " + response.toString());
             responseObject.put("response", new JSONObject(responseBody));
 
             return responseObject;
         } catch (Exception e) {
-            e.printStackTrace();
-            throw e;
+            LOGGER.error("Error in request " + endpoint, e);
+            throw new RequestException("Error in request " + endpoint, responseCode, responseBody);
         }
     }
 }
-
