@@ -432,10 +432,18 @@ public class Auth {
                     int http_status = refreshedToken.getInt("http_status");
                     if (http_status == 200) {
                         if (serverToken) {
-                            Shared.getInstance().setServerToken(refreshedToken.getJSONObject("response"));
+                            if (refreshedToken.getJSONObject("response").optString("status").equalsIgnoreCase("FAILED")) {
+                                initInstitution();
+                            } else {
+                                Shared.getInstance().setServerToken(refreshedToken.getJSONObject("response"));
+                            }
                         } else {
-                            // test refreshedToken.getJSONObject("response").put("accessTokenExpiresAt", System.currentTimeMillis() + 30_000L);
-                            Shared.getInstance().setCustomerToken(customerNumber, refreshedToken.getJSONObject("response"));
+                            if (refreshedToken.getJSONObject("response").optString("status").equalsIgnoreCase("FAILED")) {
+                                Shared.getInstance().removeCustomer(customerNumber);
+                                initCustomer(customerNumber);
+                            } else {
+                                Shared.getInstance().setCustomerToken(customerNumber, refreshedToken.getJSONObject("response"));
+                            }
                         }
                         return true;
                     } else {
