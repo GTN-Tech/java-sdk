@@ -280,5 +280,15 @@ public class GTNAPI {
     public synchronized List<String> getActiveCustomers() {
         return Shared.getInstance().getActiveCustomers();
     }
+
+    /**
+     * Get the current access token for a given customer.
+     *
+     * @param customerNumber the customer identifier
+     * @return the access token for the customer, or null if not available
+     */
+    public String getCustomerAccessToken(String customerNumber) {
+        return Shared.getInstance().getCustomerAccessToken(customerNumber);
+    }
 }
 
