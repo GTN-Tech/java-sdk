@@ -14,7 +14,7 @@ Maven:
 <dependency>
     <groupId>com.gtngroup</groupId>
     <artifactId>gtn-embed-sdk</artifactId>
-    <version>0.9.1</version>
+    <version>0.9.2</version>
 </dependency>
 ```
 
