@@ -11,6 +11,7 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.time.Duration;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -21,6 +22,9 @@ import org.apache.logging.log4j.Logger;
 public class Requests {
 
     private static final Logger LOGGER = LogManager.getLogger(Auth.class);
+    private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder()
+            .connectTimeout(Duration.ofSeconds(10))
+            .build();
 
     /**
      * HTTP GET method
@@ -163,12 +167,11 @@ public class Requests {
             url = URI.create(Shared.getInstance().getAPIUrl() + endpoint);
         }
 
-        HttpClient client = HttpClient.newHttpClient();
-
         try {
             HttpRequest.Builder request = HttpRequest.newBuilder()
                     .uri(url)
-                    .header("Content-Type", "application/json");
+                    .header("Content-Type", "application/json")
+                    .timeout(Duration.ofSeconds(30));
 
             if (token != null) {
                 request.header("Authorization", token);
@@ -201,7 +204,7 @@ public class Requests {
             }
 
             LOGGER.debug(String.format("requesting %s for %s%n", url, customerNumber == null ? "server token": "customer " + customerNumber));
-            HttpResponse<String> response = client.send(request.build(), HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> response = HTTP_CLIENT.send(request.build(), HttpResponse.BodyHandlers.ofString());
 
             responseCode = response.statusCode();
 
