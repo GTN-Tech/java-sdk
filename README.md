@@ -14,26 +14,26 @@ Maven:
 <dependency>
     <groupId>com.gtngroup</groupId>
     <artifactId>gtn-embed-sdk</artifactId>
-    <version>0.9.2</version>
+    <version>0.9.3</version>
 </dependency>
 ```
 
 Gradle:
 
 ```text
-implementation group: 'com.gtngroup', name: 'gtn-embed-sdk', version: '0.4.0'
+implementation group: 'com.gtngroup', name: 'gtn-embed-sdk', version: '0.9.3'
 ```
 
 Gradle Short:
 
 ```text
-implementation 'com.gtngroup:gtn-embed-sdk:0.4.0'
+implementation 'com.gtngroup:gtn-embed-sdk:0.9.3'
 ```
 
 Gradle Kotlin:
 
 ```kotlin
-implementation("com.gtngroup:gtn-embed-sdk:0.4.0")
+implementation("com.gtngroup:gtn-embed-sdk:0.9.3")
 ```
 
 ### API Authentication
@@ -60,7 +60,7 @@ For a connection to be established, it is required to have the following informa
 * `Private Key` of the institution, provided by GTN
 
 Following code snippet is to authenticate the **Institution**.<br>
-By authenticating the Institution, all endpoints authorised to the Institution token can me accessed  
+By authenticating the Institution, all endpoints authorised to the Institution token can me accessed
 ```java
 import com.gtngroup.GTNAPI;
 import com.gtngroup.util.Params;
@@ -84,7 +84,7 @@ authentication **status** is in the format
 
 ```json
 {
-    "http_status": 200, 
+    "http_status": 200,
     "auth_status": "SUCCESS"
 }
 ```
@@ -140,7 +140,7 @@ Params params = new Params()
     .add("lastName", "Smith")
     .add("passportNumber", "123456")
     ...
-    
+
 JSONObject response = api.post('/trade/bo/v1.2.1/customer/account', params)
 System.out.println(response.toString(4));
 ```
@@ -178,21 +178,21 @@ StreamingService ts = api.getTradeStreamingService(new MessageListener() {
     public void onOpen() {
                 System.out.println("Session opened");
             }
-    
+
     @Override
     public void onMessage(JSONObject message) {
                 System.out.println("Message: " + message.toString(4));
             }
-    
+
     @Override
     public void onClose(String closeMessage) {
                 System.out.println("Session closed");
             }
-    
+
     @Override
     public void onError(JSONObject message) {
             System.out.println("Error: " + message.toString(4));
-    
+
             }
     });
 ts.connect("/trade/sse/v1.2.1", "ORDER");
@@ -230,17 +230,17 @@ final StreamingService ms = api.getMarketDataStreamingService(new MessageListene
     public void onOpen() {
         System.out.println("Open");
     }
-    
+
     @Override
     public void onMessage(JSONObject message) {
         System.out.println(message);
     }
-    
+
     @Override
     public void onClose(String closeMessage) {
         System.out.println("On CLose");
     }
-    
+
     @Override
     public void onError(JSONObject message) {
         System.out.println("Error: " + message);
