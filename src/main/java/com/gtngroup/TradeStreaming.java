@@ -19,6 +19,9 @@ public class TradeStreaming implements StreamingService{
     private static TradeStreaming self;
     private MessageListener webSocketListener;
     private Stream<String> linesInResponse;
+    private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder()
+            .connectTimeout(Duration.ofSeconds(10))
+            .build();
 
 
     private TradeStreaming() {
@@ -74,7 +77,6 @@ public class TradeStreaming implements StreamingService{
                 endpoint =  "/" + endpoint;
             }
 
-            HttpClient client = HttpClient.newHttpClient();
             HttpRequest request = HttpRequest.newBuilder()
                     .header("Authorization", "Bearer " + Shared.getInstance().getServerToken().get("accessToken").toString())
                     .header("Throttle-Key", Shared.getInstance().getAppKey())
@@ -83,7 +85,7 @@ public class TradeStreaming implements StreamingService{
                     .timeout(Duration.ofSeconds(120))
                     .build();
 
-            self.linesInResponse = client.send(request, HttpResponse.BodyHandlers.ofLines()).body();
+            self.linesInResponse = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofLines()).body();
             new Thread("GTN Trade SSE Reader") {
                 @Override
                 public void run() {
